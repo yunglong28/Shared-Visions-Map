@@ -1,0 +1,20 @@
+id,name,category,color,latitude,longitude,location,url
+anga,ANGA,fights,#e63923,52.52,13.405,"Berlin, Germany",https://anga.live
+artoppression,Art & Oppression,fights,#e63923,48.85,2.35,Global Network,
+digsov,Digital Sovereignty,fights,#e63923,50.11,8.68,Global Network,
+offcut,Offcut Network,material,#2e7d32,47.37,8.54,Switzerland,https://www.offcut.ch
+rebiennale,Rebiennale,material,#2e7d32,45.44,12.32,"Venice, Italy",https://rebiennale.org
+woolshed,Woolshed,material,#2e7d32,46.8,10.5,Alpine Region,https://www.alpine-space.eu/project/woolshed/
+barn,BARN - Brussels Artist Run Network,space,#f9a825,50.85,4.35,"Brussels, Belgium",https://brusselsartistrun.net
+levelfive,Level Five Cooperative,space,#f9a825,50.83,4.40,"Brussels, Belgium",https://levelfive.brussels
+kinlab,KINlab,space,#f9a825,45.46,9.19,"Milan, Italy",https://kinlab.it
+ot301,OT301,space,#f9a825,52.36,4.87,"Amsterdam, Netherlands",https://www.ot301.nl
+amsterdamalternative,Amsterdam Alternative,space,#f9a825,52.38,4.92,"Amsterdam, Netherlands",https://amsterdamalternative.nl
+lauds,LAUDS Factories,tech,#0277bd,51.05,3.72,Europe,https://lauds.eu
+fediverse,Fediverse,tech,#0277bd,37.77,-122.42,Global Network,https://fediverse.party
+autonomic,Autonomic Cooperative,tech,#0277bd,51.45,-2.59,"Bristol, UK",https://autonomic.zone
+bread,Bread Cooperative,tech,#0277bd,53.48,-2.24,"Manchester, UK",https://bread.coop
+inc,Institute of Network Cultures,tech,#0277bd,52.37,4.91,"Amsterdam, Netherlands",https://networkcultures.org
+lumbung,lumbung.space,tech,#0277bd,-6.21,106.85,Indonesia / Global,https://lumbung.space
+hackersdesigners,Hackers & Designers,tech,#0277bd,52.35,4.85,"Amsterdam, Netherlands",https://hackersanddesigners.nl
+bibliograph,Biblio-graph,tech,#0277bd,48.21,16.37,"Vienna, Austria",https://biblio-graph.org

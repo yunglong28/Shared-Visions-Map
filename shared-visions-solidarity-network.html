@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHARED VISIONS // Solidarity Network</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #c8c8c8;
+            --bg-panel: #b8b8b8;
+            --bg-dark: #2a2a2a;
+            --accent-red: #e63923;
+            --accent-red-dark: #c41e0a;
+            --black: #1a1a1a;
+            --white: #f0f0f0;
+            --gray-dark: #4a4a4a;
+            --gray-mid: #7a7a7a;
+            --gray-light: #a0a0a0;
+            --panel-border: #909090;
+            --green: #2e7d32;
+            --yellow: #f9a825;
+            --blue: #0277bd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Mono', monospace;
+            background-color: var(--bg-main);
+            color: var(--black);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* CRT scanline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Animated scan beam */
+        .scan-beam {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent-red), transparent);
+            opacity: 0.15;
+            animation: scan-down 8s linear infinite;
+            pointer-events: none;
+            z-index: 1001;
+        }
+
+        @keyframes scan-down {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        header {
+            padding: 1rem 2rem;
+            background: var(--bg-panel);
+            border-bottom: 3px solid var(--black);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-shapes {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+
+        .shape {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--black);
+            transition: all 0.3s;
+        }
+
+        .shape.circle { border-radius: 50%; }
+        .shape.filled { background: var(--accent-red); border-color: var(--accent-red); }
+        .shape.diamond { transform: rotate(45deg); width: 14px; height: 14px; }
+
+        .header-center {
+            text-align: center;
+            flex: 1;
+        }
+
+        h1 {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: clamp(1rem, 2.5vw, 1.8rem);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--black);
+        }
+
+        h1 span { color: var(--accent-red); }
+
+        .subtitle {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--gray-dark);
+            letter-spacing: 0.25em;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1900px;
+            margin: 0 auto;
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        @media (min-width: 1024px) {
+            .container {
+                flex-direction: row;
+                height: calc(100vh - 75px);
+            }
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            border: 3px solid var(--black);
+            position: relative;
+        }
+
+        .panel-header {
+            background: var(--black);
+            color: var(--white);
+            padding: 0.4rem 0.8rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-id { color: var(--accent-red); }
+
+        .sidebar {
+            width: 100%;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 1024px) {
+            .sidebar {
+                width: 300px;
+                min-width: 280px;
+            }
+        }
+
+        .sidebar-content {
+            padding: 0.8rem;
+        }
+
+        .category {
+            margin-bottom: 1rem;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: var(--bg-main);
+            border: 2px solid var(--black);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .category-header:hover {
+            background: var(--white);
+            transform: translateX(3px);
+        }
+
+        .category-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .category-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .category-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            flex: 1;
+        }
+
+        .category-count {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--gray-mid);
+            background: var(--white);
+            padding: 0.15rem 0.35rem;
+            border: 1px solid var(--black);
+        }
+
+        .entity-list {
+            margin-left: 0.4rem;
+            padding-left: 0.8rem;
+            border-left: 2px solid var(--gray-light);
+        }
+
+        .entity-item {
+            padding: 0.35rem 0.4rem;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-bottom: 1px dashed var(--gray-light);
+            position: relative;
+        }
+
+        .entity-item:last-child { border-bottom: none; }
+
+        .entity-item::before {
+            content: '▸';
+            color: var(--gray-mid);
+            font-size: 0.5rem;
+            transition: all 0.1s;
+        }
+
+        .entity-item:hover {
+            background: var(--white);
+            color: var(--accent-red);
+            padding-left: 0.8rem;
+        }
+
+        .entity-item:hover::before { color: var(--accent-red); }
+
+        .entity-item.active {
+            background: var(--accent-red);
+            color: var(--white);
+            padding-left: 0.8rem;
+        }
+
+        .entity-item.active::before { color: var(--white); }
+
+        /* Keyboard navigation indicator */
+        .entity-item.keyboard-focus {
+            outline: 2px dashed var(--accent-red);
+            outline-offset: 2px;
+        }
+
+        .map-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            min-height: 400px;
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, var(--bg-panel) 0%, #a8a8a8 100%);
+        }
+
+        /* Orbital rings */
+        .orbital-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid var(--accent-red);
+            border-radius: 50%;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .orbital-ring:nth-child(1) { width: 60%; height: 60%; animation: rotate-slow 60s linear infinite; }
+        .orbital-ring:nth-child(2) { width: 75%; height: 75%; animation: rotate-slow 90s linear infinite reverse; }
+        .orbital-ring:nth-child(3) { width: 90%; height: 90%; animation: rotate-slow 120s linear infinite; border-style: dashed; }
+
+        @keyframes rotate-slow {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        #map-svg {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #map-svg:active { cursor: grabbing; }
+
+        .land {
+            fill: var(--gray-dark);
+            stroke: var(--gray-mid);
+            stroke-width: 0.4;
+            transition: fill 0.2s;
+        }
+
+        .land:hover { fill: #3a3a3a; }
+
+        .graticule {
+            fill: none;
+            stroke: var(--gray-mid);
+            stroke-width: 0.25;
+            stroke-dasharray: 2, 2;
+        }
+
+        /* Marker styles */
+        .marker-core {
+            transition: r 0.15s ease-out, fill 0.15s;
+            stroke: var(--black);
+            stroke-width: 1;
+        }
+
+        .marker-ring {
+            fill: none;
+            stroke-width: 1.5;
+            opacity: 0;
+        }
+
+        .marker-ring.active {
+            animation: ring-pulse 0.8s ease-out forwards;
+        }
+
+        @keyframes ring-pulse {
+            0% { r: 4; opacity: 1; }
+            100% { r: 25; opacity: 0; }
+        }
+
+        /* Active marker glow */
+        .marker-glow {
+            fill: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .marker-glow.active {
+            opacity: 0.4;
+            animation: glow-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
+        }
+
+        .connection-line {
+            fill: none;
+            stroke-width: 1;
+            stroke-dasharray: 3, 3;
+            opacity: 0.3;
+            animation: dash 12s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -60; }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: var(--black);
+            color: var(--white);
+            border: 2px solid var(--accent-red);
+            max-width: 260px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.15s, transform 0.15s;
+        }
+
+        .tooltip.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tooltip-header {
+            background: var(--accent-red);
+            color: var(--white);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 0.4rem 0.6rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .tooltip-body { padding: 0.6rem; }
+
+        .tooltip-name {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .tooltip-location {
+            font-size: 0.65rem;
+            color: var(--gray-light);
+            margin-bottom: 0.3rem;
+        }
+
+        .tooltip-url {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--accent-red);
+            word-break: break-all;
+        }
+
+        .tooltip-hint {
+            font-size: 0.5rem;
+            color: var(--gray-mid);
+            margin-top: 0.4rem;
+            padding-top: 0.4rem;
+            border-top: 1px dashed var(--gray-dark);
+        }
+
+        /* Controls */
+        .controls-panel {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            z-index: 50;
+        }
+
+        .ctrl-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--black);
+            border: 2px solid var(--accent-red);
+            color: var(--white);
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--accent-red);
+            transform: scale(1.05);
+        }
+
+        .ctrl-btn:active { transform: scale(0.95); }
+
+        /* Info panel */
+        .info-panel {
+            position: absolute;
+            bottom: 0.6rem;
+            left: 0.6rem;
+            background: var(--black);
+            border: 2px solid var(--accent-red);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--white);
+            z-index: 50;
+        }
+
+        .info-panel-header {
+            background: var(--accent-red);
+            padding: 0.25rem 0.5rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+        }
+
+        .info-panel-body { padding: 0.4rem 0.5rem; }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.15rem 0;
+        }
+
+        .stat-value { color: var(--accent-red); }
+
+        /* Keyboard shortcuts panel */
+        .shortcuts-panel {
+            position: absolute;
+            bottom: 0.6rem;
+            right: 0.6rem;
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid var(--gray-dark);
+            padding: 0.5rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--gray-light);
+            z-index: 50;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .shortcuts-panel:hover { opacity: 1; }
+
+        .shortcut-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .shortcut-key {
+            background: var(--gray-dark);
+            color: var(--white);
+            padding: 0.1rem 0.3rem;
+            border-radius: 2px;
+            min-width: 1.2rem;
+            text-align: center;
+        }
+
+        /* Status bar */
+        .status-bar {
+            display: flex;
+            gap: 1rem;
+            padding: 0.4rem 0.8rem;
+            background: var(--black);
+            color: var(--white);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.08em;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-red);
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+
+        /* Current node display */
+        .current-node {
+            margin-left: auto;
+            color: var(--accent-red);
+        }
+
+        /* Legend */
+        .legend-decor {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+            padding-top: 0.8rem;
+            border-top: 2px solid var(--black);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .legend-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        /* Quote */
+        .quote-panel {
+            font-size: 0.55rem;
+            line-height: 1.4;
+            color: var(--gray-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 0.6rem;
+            background: var(--bg-main);
+            border: 1px dashed var(--gray-mid);
+            margin-top: 0.8rem;
+        }
+
+        /* Trail effect canvas */
+        #trail-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.6;
+        }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: absolute;
+            top: 0.6rem;
+            left: 0.6rem;
+            background: var(--black);
+            border: 2px solid var(--gray-dark);
+            color: var(--gray-mid);
+            font-size: 0.9rem;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            z-index: 50;
+            transition: all 0.15s;
+        }
+
+        .sound-toggle.active {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .sound-toggle:hover { transform: scale(1.05); }
+
+        /* Geometric decorations */
+        .geo-decor {
+            position: absolute;
+            display: flex;
+            gap: 3px;
+            z-index: 10;
+            opacity: 0.6;
+        }
+
+        .geo-shape {
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--black);
+        }
+
+        .geo-shape.filled { background: var(--accent-red); border-color: var(--accent-red); }
+        .geo-shape.circle { border-radius: 50%; }
+
+        /* Loading */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Space Mono', monospace;
+            color: var(--black);
+            font-size: 0.8rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .loading::after {
+            content: '_';
+            animation: cursor-blink 0.8s infinite;
+        }
+
+        @keyframes cursor-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Scrollbar */
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-track { background: var(--bg-main); }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--black); }
+
+        @media (max-width: 768px) {
+            .info-panel, .shortcuts-panel, .geo-decor { display: none; }
+            .header-shapes { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="scan-beam"></div>
+
+    <header>
+        <div class="header-shapes">
+            <div class="shape circle filled"></div>
+            <div class="shape"></div>
+            <div class="shape diamond"></div>
+        </div>
+        <div class="header-center">
+            <h1><span>Shared</span> Visions</h1>
+            <p class="subtitle">Solidarity Network Infrastructure</p>
+        </div>
+        <div class="header-shapes">
+            <div class="shape diamond filled"></div>
+            <div class="shape circle"></div>
+            <div class="shape filled"></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar panel">
+            <div class="panel-header">
+                <span>Network Nodes</span>
+                <span class="panel-id">A/1</span>
+            </div>
+            <div class="sidebar-content">
+                <div class="category" data-category="fights">
+                    <div class="category-header" tabindex="0">
+                        <div class="category-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#e63923" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="9"/>
+                                <path d="M12 7v10M7 12h10"/>
+                            </svg>
+                        </div>
+                        <span class="category-name" style="color: var(--accent-red)">Shared Fights & Struggles</span>
+                        <span class="category-count">03</span>
+                    </div>
+                    <div class="entity-list">
+                        <div class="entity-item" data-entity="anga" tabindex="0">ANGA</div>
+                        <div class="entity-item" data-entity="artoppression" tabindex="0">Art & Oppression</div>
+                        <div class="entity-item" data-entity="digsov" tabindex="0">Digital Sovereignty</div>
+                    </div>
+                </div>
+
+                <div class="category" data-category="material">
+                    <div class="category-header" tabindex="0">
+                        <div class="category-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2.5">
+                                <rect x="5" y="5" width="14" height="14"/>
+                                <path d="M5 12h14M12 5v14"/>
+                            </svg>
+                        </div>
+                        <span class="category-name" style="color: var(--green)">Shared Material & Logistics</span>
+                        <span class="category-count">03</span>
+                    </div>
+                    <div class="entity-list">
+                        <div class="entity-item" data-entity="offcut" tabindex="0">Offcut Network</div>
+                        <div class="entity-item" data-entity="rebiennale" tabindex="0">Rebiennale</div>
+                        <div class="entity-item" data-entity="woolshed" tabindex="0">Woolshed</div>
+                    </div>
+                </div>
+
+                <div class="category" data-category="space">
+                    <div class="category-header" tabindex="0">
+                        <div class="category-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#f9a825" stroke-width="2.5">
+                                <polygon points="12,3 21,21 3,21"/>
+                            </svg>
+                        </div>
+                        <span class="category-name" style="color: var(--yellow)">Shared Space</span>
+                        <span class="category-count">05</span>
+                    </div>
+                    <div class="entity-list">
+                        <div class="entity-item" data-entity="barn" tabindex="0">BARN Brussels</div>
+                        <div class="entity-item" data-entity="levelfive" tabindex="0">Level Five Coop</div>
+                        <div class="entity-item" data-entity="kinlab" tabindex="0">KINlab</div>
+                        <div class="entity-item" data-entity="ot301" tabindex="0">OT301</div>
+                        <div class="entity-item" data-entity="amsterdamalternative" tabindex="0">Amsterdam Alternative</div>
+                    </div>
+                </div>
+
+                <div class="category" data-category="tech">
+                    <div class="category-header" tabindex="0">
+                        <div class="category-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#0277bd" stroke-width="2.5">
+                                <polygon points="12,2 22,12 12,22 2,12"/>
+                            </svg>
+                        </div>
+                        <span class="category-name" style="color: var(--blue)">Shared Technologies</span>
+                        <span class="category-count">08</span>
+                    </div>
+                    <div class="entity-list">
+                        <div class="entity-item" data-entity="lauds" tabindex="0">LAUDS Factories</div>
+                        <div class="entity-item" data-entity="fediverse" tabindex="0">Fediverse</div>
+                        <div class="entity-item" data-entity="autonomic" tabindex="0">Autonomic Coop</div>
+                        <div class="entity-item" data-entity="bread" tabindex="0">Bread Coop</div>
+                        <div class="entity-item" data-entity="inc" tabindex="0">INC Amsterdam</div>
+                        <div class="entity-item" data-entity="lumbung" tabindex="0">lumbung.space</div>
+                        <div class="entity-item" data-entity="hackersdesigners" tabindex="0">Hackers & Designers</div>
+                        <div class="entity-item" data-entity="bibliograph" tabindex="0">Biblio-graph</div>
+                    </div>
+                </div>
+
+                <div class="legend-decor">
+                    <div class="legend-item"><div class="legend-dot" style="background:#e63923"></div>Fights</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#2e7d32"></div>Material</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#f9a825"></div>Space</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#0277bd"></div>Tech</div>
+                </div>
+
+                <div class="quote-panel">
+                    "If the network is the people — the revolution of infrastructure starts with you"
+                </div>
+            </div>
+        </aside>
+
+        <div class="map-wrapper">
+            <main class="map-container panel">
+                <div class="panel-header">
+                    <span>Global Commons Map</span>
+                    <span class="panel-id">B/2</span>
+                </div>
+
+                <div class="orbital-ring"></div>
+                <div class="orbital-ring"></div>
+                <div class="orbital-ring"></div>
+
+                <canvas id="trail-canvas"></canvas>
+                
+                <div class="loading" id="loading">Initializing Network</div>
+                <svg id="map-svg"></svg>
+
+                <div class="tooltip" id="tooltip">
+                    <div class="tooltip-header" id="tooltip-category"></div>
+                    <div class="tooltip-body">
+                        <div class="tooltip-name" id="tooltip-name"></div>
+                        <div class="tooltip-location" id="tooltip-location"></div>
+                        <div class="tooltip-url" id="tooltip-url"></div>
+                        <div class="tooltip-hint">Click to visit ↗</div>
+                    </div>
+                </div>
+
+                <button class="sound-toggle" id="sound-toggle" title="Toggle sound">♪</button>
+
+                <div class="controls-panel">
+                    <button class="ctrl-btn" id="zoom-in" title="Zoom in [+]">+</button>
+                    <button class="ctrl-btn" id="zoom-out" title="Zoom out [-]">−</button>
+                    <button class="ctrl-btn" id="zoom-reset" title="Reset view [0]">○</button>
+                </div>
+
+                <div class="info-panel">
+                    <div class="info-panel-header">SYS STATUS</div>
+                    <div class="info-panel-body">
+                        <div class="stat"><span>NODES</span><span class="stat-value">19</span></div>
+                        <div class="stat"><span>SECTORS</span><span class="stat-value">04</span></div>
+                        <div class="stat"><span>REGIONS</span><span class="stat-value">08</span></div>
+                        <div class="stat"><span>STATUS</span><span class="stat-value" id="status-text">READY</span></div>
+                    </div>
+                </div>
+
+                <div class="shortcuts-panel">
+                    <div class="shortcut-row"><span class="shortcut-key">↑↓</span> Navigate</div>
+                    <div class="shortcut-row"><span class="shortcut-key">Enter</span> Open link</div>
+                    <div class="shortcut-row"><span class="shortcut-key">Esc</span> Reset view</div>
+                    <div class="shortcut-row"><span class="shortcut-key">S</span> Sound on/off</div>
+                </div>
+            </main>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>Network Online</span>
+                </div>
+                <div class="status-item">
+                    <span>Protocol v2.1</span>
+                </div>
+                <div class="status-item current-node" id="current-node-display">
+                    — No node selected —
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // DATA
+        // ═══════════════════════════════════════════════════════════════
+        const entities = [
+            { id: 'anga', name: 'ANGA', category: 'fights', color: '#e63923', lat: 52.52, lon: 13.405, location: 'Berlin, Germany', url: 'https://anga.live' },
+            { id: 'artoppression', name: 'Art & Oppression', category: 'fights', color: '#e63923', lat: 48.85, lon: 2.35, location: 'Global Network', url: '' },
+            { id: 'digsov', name: 'Digital Sovereignty', category: 'fights', color: '#e63923', lat: 50.11, lon: 8.68, location: 'Global Network', url: '' },
+            { id: 'offcut', name: 'Offcut Network', category: 'material', color: '#2e7d32', lat: 47.37, lon: 8.54, location: 'Switzerland', url: 'https://www.offcut.ch' },
+            { id: 'rebiennale', name: 'Rebiennale', category: 'material', color: '#2e7d32', lat: 45.44, lon: 12.32, location: 'Venice, Italy', url: 'https://rebiennale.org' },
+            { id: 'woolshed', name: 'Woolshed', category: 'material', color: '#2e7d32', lat: 46.8, lon: 10.5, location: 'Alpine Region', url: 'https://www.alpine-space.eu/project/woolshed/' },
+            { id: 'barn', name: 'BARN - Brussels Artist Run Network', category: 'space', color: '#f9a825', lat: 50.85, lon: 4.35, location: 'Brussels, Belgium', url: 'https://brusselsartistrun.net' },
+            { id: 'levelfive', name: 'Level Five Cooperative', category: 'space', color: '#f9a825', lat: 50.83, lon: 4.40, location: 'Brussels, Belgium', url: 'https://levelfive.brussels' },
+            { id: 'kinlab', name: 'KINlab', category: 'space', color: '#f9a825', lat: 45.46, lon: 9.19, location: 'Milan, Italy', url: 'https://kinlab.it' },
+            { id: 'ot301', name: 'OT301', category: 'space', color: '#f9a825', lat: 52.36, lon: 4.87, location: 'Amsterdam, Netherlands', url: 'https://www.ot301.nl' },
+            { id: 'amsterdamalternative', name: 'Amsterdam Alternative', category: 'space', color: '#f9a825', lat: 52.38, lon: 4.92, location: 'Amsterdam, Netherlands', url: 'https://amsterdamalternative.nl' },
+            { id: 'lauds', name: 'LAUDS Factories', category: 'tech', color: '#0277bd', lat: 51.05, lon: 3.72, location: 'Europe', url: 'https://lauds.eu' },
+            { id: 'fediverse', name: 'Fediverse', category: 'tech', color: '#0277bd', lat: 37.77, lon: -122.42, location: 'Global Network', url: 'https://fediverse.party' },
+            { id: 'autonomic', name: 'Autonomic Cooperative', category: 'tech', color: '#0277bd', lat: 51.45, lon: -2.59, location: 'Bristol, UK', url: 'https://autonomic.zone' },
+            { id: 'bread', name: 'Bread Cooperative', category: 'tech', color: '#0277bd', lat: 53.48, lon: -2.24, location: 'Manchester, UK', url: 'https://bread.coop' },
+            { id: 'inc', name: 'Institute of Network Cultures', category: 'tech', color: '#0277bd', lat: 52.37, lon: 4.91, location: 'Amsterdam, Netherlands', url: 'https://networkcultures.org' },
+            { id: 'lumbung', name: 'lumbung.space', category: 'tech', color: '#0277bd', lat: -6.21, lon: 106.85, location: 'Indonesia / Global', url: 'https://lumbung.space' },
+            { id: 'hackersdesigners', name: 'Hackers & Designers', category: 'tech', color: '#0277bd', lat: 52.35, lon: 4.85, location: 'Amsterdam, Netherlands', url: 'https://hackersanddesigners.nl' },
+            { id: 'bibliograph', name: 'Biblio-graph', category: 'tech', color: '#0277bd', lat: 48.21, lon: 16.37, location: 'Vienna, Austria', url: 'https://biblio-graph.org' }
+        ];
+
+        const categoryNames = {
+            fights: 'Shared Fights & Struggles',
+            material: 'Shared Material & Logistics',
+            space: 'Shared Space',
+            tech: 'Shared Technologies'
+        };
+
+        // ═══════════════════════════════════════════════════════════════
+        // AUDIO ENGINE (Web Audio API)
+        // ═══════════════════════════════════════════════════════════════
+        let audioCtx = null;
+        let soundEnabled = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playTone(frequency, duration = 0.08, type = 'sine', volume = 0.1) {
+            if (!soundEnabled || !audioCtx) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playNavigationSound(index) {
+            // Pentatonic scale frequencies for pleasant navigation sounds
+            const scale = [220, 261.63, 293.66, 349.23, 392, 440, 523.25, 587.33];
+            const freq = scale[index % scale.length];
+            playTone(freq, 0.1, 'triangle', 0.08);
+        }
+
+        function playSelectSound() {
+            playTone(523.25, 0.05, 'square', 0.05);
+            setTimeout(() => playTone(659.25, 0.1, 'square', 0.05), 50);
+        }
+
+        function playZoomSound(zoomIn) {
+            if (zoomIn) {
+                playTone(300, 0.08, 'sawtooth', 0.03);
+                setTimeout(() => playTone(400, 0.08, 'sawtooth', 0.03), 40);
+            } else {
+                playTone(400, 0.08, 'sawtooth', 0.03);
+                setTimeout(() => playTone(300, 0.08, 'sawtooth', 0.03), 40);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // TRAIL EFFECT (Canvas)
+        // ═══════════════════════════════════════════════════════════════
+        const trailCanvas = document.getElementById('trail-canvas');
+        const trailCtx = trailCanvas.getContext('2d');
+        let trails = [];
+
+        function resizeTrailCanvas() {
+            const rect = trailCanvas.parentElement.getBoundingClientRect();
+            trailCanvas.width = rect.width;
+            trailCanvas.height = rect.height;
+        }
+
+        function addTrail(fromX, fromY, toX, toY, color) {
+            trails.push({
+                fromX, fromY, toX, toY, color,
+                progress: 0,
+                alpha: 1
+            });
+        }
+
+        function updateTrails() {
+            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            
+            trails = trails.filter(t => t.alpha > 0.01);
+            
+            trails.forEach(t => {
+                t.progress = Math.min(1, t.progress + 0.05);
+                t.alpha *= 0.96;
+                
+                const currentX = t.fromX + (t.toX - t.fromX) * t.progress;
+                const currentY = t.fromY + (t.toY - t.fromY) * t.progress;
+                
+                trailCtx.beginPath();
+                trailCtx.moveTo(t.fromX, t.fromY);
+                trailCtx.lineTo(currentX, currentY);
+                trailCtx.strokeStyle = t.color + Math.floor(t.alpha * 255).toString(16).padStart(2, '0');
+                trailCtx.lineWidth = 2;
+                trailCtx.stroke();
+                
+                // Draw head particle
+                trailCtx.beginPath();
+                trailCtx.arc(currentX, currentY, 3 * t.alpha, 0, Math.PI * 2);
+                trailCtx.fillStyle = t.color + Math.floor(t.alpha * 255).toString(16).padStart(2, '0');
+                trailCtx.fill();
+            });
+            
+            requestAnimationFrame(updateTrails);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // MAP SETUP
+        // ═══════════════════════════════════════════════════════════════
+        const container = document.querySelector('.map-container');
+        const svg = d3.select('#map-svg');
+        const tooltip = document.getElementById('tooltip');
+        const loading = document.getElementById('loading');
+        const currentNodeDisplay = document.getElementById('current-node-display');
+        const statusText = document.getElementById('status-text');
+
+        let width = container.clientWidth;
+        let height = container.clientHeight - 30;
+        
+        const baseMarkerSize = 4;
+        let currentZoomScale = 1;
+        let activeEntityId = null;
+        let lastMarkerScreenPos = { x: width / 2, y: height / 2 };
+
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+        const projection = d3.geoNaturalEarth1()
+            .scale(width / 5)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        const g = svg.append('g');
+        const graticuleGroup = g.append('g');
+        const landGroup = g.append('g');
+        const connectionsGroup = g.append('g');
+        const markersGroup = g.append('g');
+
+        // Glow filter
+        const defs = svg.append('defs');
+        const glowFilter = defs.append('filter')
+            .attr('id', 'marker-glow')
+            .attr('x', '-100%').attr('y', '-100%')
+            .attr('width', '300%').attr('height', '300%');
+        glowFilter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'glow');
+        const feMerge = glowFilter.append('feMerge');
+        feMerge.append('feMergeNode').attr('in', 'glow');
+        feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+        // Graticule
+        const graticule = d3.geoGraticule().step([20, 20]);
+        graticuleGroup.append('path')
+            .datum(graticule())
+            .attr('class', 'graticule')
+            .attr('d', path);
+
+        // ═══════════════════════════════════════════════════════════════
+        // ZOOM BEHAVIOR
+        // ═══════════════════════════════════════════════════════════════
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 20])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+                currentZoomScale = event.transform.k;
+                updateMarkerSizes(event.transform.k);
+                connectionsGroup.selectAll('.connection-line')
+                    .style('stroke-width', 1 / event.transform.k);
+            });
+
+        svg.call(zoom);
+
+        function updateMarkerSizes(scale) {
+            const newSize = baseMarkerSize / scale;
+            markersGroup.selectAll('.marker-core:not(.highlighted)').attr('r', newSize);
+            markersGroup.selectAll('.marker-ring').attr('r', newSize);
+            markersGroup.selectAll('.marker-ring').style('stroke-width', 1.5 / scale);
+            markersGroup.selectAll('.marker-glow').attr('r', newSize * 4);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // LOAD MAP DATA
+        // ═══════════════════════════════════════════════════════════════
+        d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+            .then(world => {
+                loading.style.display = 'none';
+                statusText.textContent = 'ACTIVE';
+                
+                const countries = topojson.feature(world, world.objects.countries);
+                
+                landGroup.selectAll('path')
+                    .data(countries.features)
+                    .enter()
+                    .append('path')
+                    .attr('class', 'land')
+                    .attr('d', path);
+
+                // Connection lines
+                ['fights', 'material', 'space', 'tech'].forEach(cat => {
+                    const catEntities = entities.filter(e => e.category === cat);
+                    for (let i = 0; i < catEntities.length; i++) {
+                        for (let j = i + 1; j < catEntities.length; j++) {
+                            const from = projection([catEntities[i].lon, catEntities[i].lat]);
+                            const to = projection([catEntities[j].lon, catEntities[j].lat]);
+                            if (from && to) {
+                                const midY = Math.min(from[1], to[1]) - 15;
+                                connectionsGroup.append('path')
+                                    .attr('class', 'connection-line')
+                                    .attr('stroke', catEntities[i].color)
+                                    .attr('d', `M${from[0]},${from[1]} Q${(from[0]+to[0])/2},${midY} ${to[0]},${to[1]}`)
+                                    .style('animation-delay', `${Math.random() * 5}s`);
+                            }
+                        }
+                    }
+                });
+
+                // Create markers
+                entities.forEach((entity) => {
+                    const coords = projection([entity.lon, entity.lat]);
+                    if (!coords) return;
+                    
+                    const markerGroup = markersGroup.append('g')
+                        .attr('class', 'marker')
+                        .attr('transform', `translate(${coords[0]}, ${coords[1]})`)
+                        .attr('data-id', entity.id)
+                        .style('cursor', 'pointer');
+
+                    // Glow (hidden by default)
+                    markerGroup.append('circle')
+                        .attr('class', 'marker-glow')
+                        .attr('r', baseMarkerSize * 4)
+                        .attr('fill', entity.color);
+
+                    // Pulse ring
+                    markerGroup.append('circle')
+                        .attr('class', 'marker-ring')
+                        .attr('r', baseMarkerSize)
+                        .attr('stroke', entity.color);
+
+                    // Core
+                    markerGroup.append('circle')
+                        .attr('class', 'marker-core')
+                        .attr('r', baseMarkerSize)
+                        .attr('fill', entity.color)
+                        .attr('filter', 'url(#marker-glow)');
+
+                    // Interactions
+                    markerGroup
+                        .on('mouseenter', (event) => {
+                            highlightMarker(entity.id);
+                            showTooltip(event, entity);
+                        })
+                        .on('mouseleave', () => {
+                            if (activeEntityId !== entity.id) {
+                                unhighlightMarker(entity.id);
+                            }
+                            hideTooltip();
+                        })
+                        .on('click', () => {
+                            if (entity.url) {
+                                playSelectSound();
+                                window.open(entity.url, '_blank');
+                            }
+                        });
+                });
+
+                // Start animation loop
+                resizeTrailCanvas();
+                updateTrails();
+            })
+            .catch(err => {
+                loading.textContent = 'Connection Error';
+                console.error(err);
+            });
+
+        // ═══════════════════════════════════════════════════════════════
+        // MARKER HIGHLIGHTING (INSTANT!)
+        // ═══════════════════════════════════════════════════════════════
+        function highlightMarker(entityId) {
+            const marker = markersGroup.select(`[data-id="${entityId}"]`);
+            if (marker.empty()) return;
+
+            const entity = entities.find(e => e.id === entityId);
+            const highlightSize = (baseMarkerSize * 3) / currentZoomScale;
+            
+            marker.raise();
+            marker.select('.marker-core')
+                .classed('highlighted', true)
+                .attr('r', highlightSize);
+            marker.select('.marker-glow')
+                .classed('active', true);
+            marker.select('.marker-ring')
+                .classed('active', true);
+
+            // Update status display
+            currentNodeDisplay.textContent = `◉ ${entity.name}`;
+            currentNodeDisplay.style.color = entity.color;
+        }
+
+        function unhighlightMarker(entityId) {
+            const marker = markersGroup.select(`[data-id="${entityId}"]`);
+            if (marker.empty()) return;
+
+            const normalSize = baseMarkerSize / currentZoomScale;
+            
+            marker.select('.marker-core')
+                .classed('highlighted', false)
+                .attr('r', normalSize);
+            marker.select('.marker-glow')
+                .classed('active', false);
+            marker.select('.marker-ring')
+                .classed('active', false);
+        }
+
+        function unhighlightAllMarkers() {
+            markersGroup.selectAll('.marker-core')
+                .classed('highlighted', false)
+                .attr('r', baseMarkerSize / currentZoomScale);
+            markersGroup.selectAll('.marker-glow').classed('active', false);
+            markersGroup.selectAll('.marker-ring').classed('active', false);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ZOOM TO ENTITY (with trail effect)
+        // ═══════════════════════════════════════════════════════════════
+        function zoomToEntity(entityId, animate = true) {
+            const entity = entities.find(e => e.id === entityId);
+            if (!entity) return;
+
+            const coords = projection([entity.lon, entity.lat]);
+            if (!coords) return;
+
+            // Calculate new screen position for trail
+            const scale = 6;
+            const tx = (width / 2) - (coords[0] * scale);
+            const ty = (height / 2) - (coords[1] * scale);
+
+            // Add trail from last position to new position
+            const newScreenX = width / 2;
+            const newScreenY = height / 2;
+            addTrail(lastMarkerScreenPos.x, lastMarkerScreenPos.y, newScreenX, newScreenY, entity.color);
+            lastMarkerScreenPos = { x: newScreenX, y: newScreenY };
+
+            const transform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+
+            // IMMEDIATELY highlight the marker (no waiting!)
+            unhighlightAllMarkers();
+            highlightMarker(entityId);
+            activeEntityId = entityId;
+
+            if (animate) {
+                svg.transition()
+                    .duration(400)
+                    .ease(d3.easeCubicOut)
+                    .call(zoom.transform, transform);
+            } else {
+                svg.call(zoom.transform, transform);
+            }
+        }
+
+        function zoomToCategory(category) {
+            const catEntities = entities.filter(e => e.category === category);
+            if (catEntities.length === 0) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            
+            catEntities.forEach(entity => {
+                const coords = projection([entity.lon, entity.lat]);
+                if (coords) {
+                    minX = Math.min(minX, coords[0]);
+                    minY = Math.min(minY, coords[1]);
+                    maxX = Math.max(maxX, coords[0]);
+                    maxY = Math.max(maxY, coords[1]);
+                }
+            });
+
+            const padding = 60;
+            const boxWidth = (maxX - minX) + padding * 2;
+            const boxHeight = (maxY - minY) + padding * 2;
+            const scale = Math.min(width / boxWidth, height / boxHeight, 8);
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const tx = (width / 2) - (centerX * scale);
+            const ty = (height / 2) - (centerY * scale);
+
+            const transform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+
+            svg.transition()
+                .duration(600)
+                .ease(d3.easeCubicOut)
+                .call(zoom.transform, transform);
+
+            // Highlight all markers in category immediately
+            unhighlightAllMarkers();
+            catEntities.forEach(e => highlightMarker(e.id));
+        }
+
+        function resetView() {
+            svg.transition()
+                .duration(400)
+                .ease(d3.easeCubicOut)
+                .call(zoom.transform, d3.zoomIdentity);
+            
+            unhighlightAllMarkers();
+            activeEntityId = null;
+            currentNodeDisplay.textContent = '— No node selected —';
+            currentNodeDisplay.style.color = '';
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // TOOLTIP
+        // ═══════════════════════════════════════════════════════════════
+        function showTooltip(event, entity) {
+            document.getElementById('tooltip-category').textContent = categoryNames[entity.category];
+            document.getElementById('tooltip-name').textContent = entity.name;
+            document.getElementById('tooltip-location').textContent = '◉ ' + entity.location;
+            document.getElementById('tooltip-url').textContent = entity.url || '—';
+            tooltip.classList.add('active');
+            updateTooltipPosition(event);
+        }
+
+        function updateTooltipPosition(event) {
+            const rect = container.getBoundingClientRect();
+            let x = event.clientX - rect.left + 12;
+            let y = event.clientY - rect.top + 12;
+            if (x + 260 > rect.width) x = x - 280;
+            if (y + 140 > rect.height) y = y - 150;
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('active');
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SIDEBAR INTERACTIONS
+        // ═══════════════════════════════════════════════════════════════
+        let navigationTimeout = null;
+        let currentNavIndex = -1;
+        const allEntityItems = Array.from(document.querySelectorAll('.entity-item'));
+
+        function clearNavigationTimeout() {
+            if (navigationTimeout) {
+                clearTimeout(navigationTimeout);
+                navigationTimeout = null;
+            }
+        }
+
+        function scheduleReset() {
+            clearNavigationTimeout();
+            navigationTimeout = setTimeout(() => {
+                resetView();
+            }, 2500);
+        }
+
+        // Entity items
+        document.querySelectorAll('.entity-item').forEach((item, index) => {
+            item.addEventListener('mouseenter', () => {
+                clearNavigationTimeout();
+                
+                const entityId = item.dataset.entity;
+                playNavigationSound(index);
+                zoomToEntity(entityId, true);
+                
+                document.querySelectorAll('.entity-item').forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+                currentNavIndex = index;
+            });
+
+            item.addEventListener('mouseleave', () => {
+                item.classList.remove('active');
+                scheduleReset();
+            });
+
+            item.addEventListener('click', () => {
+                const entityId = item.dataset.entity;
+                const entity = entities.find(e => e.id === entityId);
+                if (entity && entity.url) {
+                    playSelectSound();
+                    window.open(entity.url, '_blank');
+                }
+            });
+
+            // Keyboard focus
+            item.addEventListener('focus', () => {
+                clearNavigationTimeout();
+                const entityId = item.dataset.entity;
+                playNavigationSound(index);
+                zoomToEntity(entityId, true);
+                document.querySelectorAll('.entity-item').forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+                currentNavIndex = index;
+            });
+
+            item.addEventListener('blur', () => {
+                item.classList.remove('active');
+                scheduleReset();
+            });
+
+            item.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const entityId = item.dataset.entity;
+                    const entity = entities.find(e => e.id === entityId);
+                    if (entity && entity.url) {
+                        playSelectSound();
+                        window.open(entity.url, '_blank');
+                    }
+                }
+            });
+        });
+
+        // Category headers
+        document.querySelectorAll('.category-header').forEach(header => {
+            header.addEventListener('mouseenter', () => {
+                clearNavigationTimeout();
+                const category = header.closest('.category').dataset.category;
+                playNavigationSound(0);
+                zoomToCategory(category);
+            });
+
+            header.addEventListener('mouseleave', () => {
+                scheduleReset();
+            });
+
+            header.addEventListener('focus', () => {
+                clearNavigationTimeout();
+                const category = header.closest('.category').dataset.category;
+                playNavigationSound(0);
+                zoomToCategory(category);
+            });
+
+            header.addEventListener('blur', () => {
+                scheduleReset();
+            });
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // CONTROLS
+        // ═══════════════════════════════════════════════════════════════
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            playZoomSound(true);
+            svg.transition().duration(200).call(zoom.scaleBy, 1.5);
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            playZoomSound(false);
+            svg.transition().duration(200).call(zoom.scaleBy, 0.67);
+        });
+
+        document.getElementById('zoom-reset').addEventListener('click', () => {
+            playSelectSound();
+            resetView();
+        });
+
+        // Sound toggle
+        const soundToggle = document.getElementById('sound-toggle');
+        soundToggle.addEventListener('click', () => {
+            initAudio();
+            soundEnabled = !soundEnabled;
+            soundToggle.classList.toggle('active', soundEnabled);
+            if (soundEnabled) playSelectSound();
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // KEYBOARD NAVIGATION
+        // ═══════════════════════════════════════════════════════════════
+        document.addEventListener('keydown', (e) => {
+            // Arrow keys for navigation
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                const direction = e.key === 'ArrowDown' ? 1 : -1;
+                currentNavIndex = Math.max(0, Math.min(allEntityItems.length - 1, currentNavIndex + direction));
+                allEntityItems[currentNavIndex].focus();
+            }
+
+            // Escape to reset
+            if (e.key === 'Escape') {
+                resetView();
+                document.activeElement.blur();
+            }
+
+            // +/- for zoom
+            if (e.key === '+' || e.key === '=') {
+                playZoomSound(true);
+                svg.transition().duration(200).call(zoom.scaleBy, 1.5);
+            }
+            if (e.key === '-') {
+                playZoomSound(false);
+                svg.transition().duration(200).call(zoom.scaleBy, 0.67);
+            }
+
+            // 0 to reset
+            if (e.key === '0') {
+                playSelectSound();
+                resetView();
+            }
+
+            // S for sound
+            if (e.key === 's' || e.key === 'S') {
+                soundToggle.click();
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // RESIZE HANDLING
+        // ═══════════════════════════════════════════════════════════════
+        window.addEventListener('resize', () => {
+            width = container.clientWidth;
+            height = container.clientHeight - 30;
+            svg.attr('viewBox', `0 0 ${width} ${height}`);
+            projection.scale(width / 5).translate([width / 2, height / 2]);
+            resizeTrailCanvas();
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (tooltip.classList.contains('active')) {
+                updateTooltipPosition(e);
+            }
+        });
+    </script>
+</body>
+</html>
